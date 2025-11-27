@@ -1,0 +1,127 @@
+/* 卡片通用样式 */
+.modern-card {
+    border: none !important;
+    border-radius: var(--card-radius) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
+    background: #fff;
+    transition: transform 0.2s;
+    margin-bottom: 24px;
+}
+
+.modern-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02) !important;
+}
+
+.card-header-styled {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    font-weight: 600; 
+    font-size: 16px;
+}
+
+/* 拖拽相关样式 */
+.draggable-card {
+    cursor: move;
+}
+
+.draggable-card.sortable-ghost {
+    opacity: 0.4;
+}
+
+.drag-handle {
+    cursor: move;
+    padding: 4px;
+    color: #9ca3af;
+    display: inline-flex;
+    align-items: center;
+}
+
+.drag-handle:hover {
+    color: #6b7280;
+}
+
+/* 资产大看板 */
+.asset-board {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.asset-label { 
+    font-size: 14px; 
+    color: var(--text-secondary); 
+    margin-bottom: 5px; 
+    text-transform: uppercase; 
+    letter-spacing: 1px; 
+}
+
+.asset-main-value { 
+    font-size: 42px; 
+    color: var(--text-main); 
+    line-height: 1.2;
+    background: linear-gradient(120deg, #10b981, #059669);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.asset-sub-value { 
+    font-size: 16px; 
+    color: var(--text-secondary); 
+    margin-top: 5px; 
+}
+
+/* 右上角工具栏 */
+.top-tools { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+}
+
+.rate-badge {
+    font-size: 12px; 
+    font-weight: 500;
+    background: #eef2ff; 
+    color: #4f46e5;
+    padding: 4px 10px; 
+    border-radius: 20px;
+}
+
+.emoji-btn { 
+    font-size: 20px; 
+    border: none; 
+    background: #f3f4f6; 
+    transition: all 0.3s; 
+}
+
+.emoji-btn:hover { 
+    background: #e5e7eb; 
+    transform: scale(1.1); 
+}
+
+/* 表格优化 */
+.el-table { 
+    --el-table-border-color: #f3f4f6; 
+    border-radius: 12px; 
+    overflow: hidden; 
+}
+
+.el-table th.el-table__cell { 
+    background-color: #f9fafb !important; 
+    color: #374151; 
+    font-weight: 600; 
+}
+
+/* 盈亏颜色 */
+.profit-positive { 
+    color: #10b981; 
+    font-weight: 600; 
+}
+
+.profit-negative { 
+    color: #ef4444; 
+    font-weight: 600; 
+}
+
+.profit-neutral { 
+    color: #6b7280; 
+}

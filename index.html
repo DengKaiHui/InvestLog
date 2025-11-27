@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 智能投资看板 (V9 美化版)</title>
+    
+    <!-- Element Plus -->
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@element-plus/icons-vue/dist/index.css" />
+    
+    <!-- Sortable.js -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="./src/styles/base.css" />
+    <link rel="stylesheet" href="./src/styles/components.css" />
+    <link rel="stylesheet" href="./src/styles/position.css" />
+</head>
+<body>
+    <div id="app">
+        <div class="navbar">
+            <div class="navbar-content">
+                <div class="app-title">
+                    <span>🚀 My Portfolio</span>
+                </div>
+                <div class="top-tools">
+                    <span class="rate-badge" v-if="config.exchangeRate">
+                        USD/CNY ≈ {{ config.exchangeRate }}
+                    </span>
+                    
+                    <el-tooltip content="系统设置" placement="bottom">
+                        <el-button circle class="emoji-btn" @click="showConfig = true" style="font-size:16px">⚙️</el-button>
+                    </el-tooltip>
+                    
+                    <el-tooltip :content="isPrivacyMode ? '点击显示金额' : '点击隐藏金额'" placement="bottom">
+                        <el-button circle class="emoji-btn" @click="togglePrivacy">
+                            {{ isPrivacyMode ? '🙈' : '👀' }}
+                        </el-button>
+                    </el-tooltip>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <el-row :gutter="24" id="draggable-container">
+                <el-col :xs="24" :md="14" class="draggable-card" data-card="left">
+                    <!-- 记录表单卡片 -->
+                    <el-card class="modern-card">
+                        <template #header>
+                            <div class="card-header-styled">
+                                <span>
+                                    <span class="drag-handle" title="拖动排序">⋮⋮</span>
+                                    ✏️ 记一笔 (USD)
+                                </span>
+                                <el-upload
+                                    action="#"
+                                    :auto-upload="false"
+                                    :show-file-list="false"
+                                    :on-change="handleImageUpload"
+                                    accept="image/*"
+                                >
+                                    <el-button type="primary" plain round size="small" :loading="analyzing">
+                                        <el-icon style="margin-right:4px"><Camera /></el-icon> 截图识别
+                                    </el-button>
+                                </el-upload>
+                            </div>
+                        </template>
+                        <el-form :model="form" label-position="top">
+                            <el-row :gutter="20">
+                                <el-col :span="12">
+                                    <el-form-item label="资产名称">
+                                        <el-input v-model="form.name" placeholder="例如: NVDA"></el-input>
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="12">
+                                    <el-form-item label="交易日期">
+                                        <el-date-picker v-model="form.date" type="date" placeholder="日期" style="width: 100%" format="YYYY-MM-DD" value-format="YYYY-MM-DD"></el-date-picker>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            <el-row :gutter="20">
+                                <el-col :span="12">
+                                    <el-form-item label="总金额 ($)">
+                                        <el-input-number v-model="form.total" :min="0" :precision="2" style="width: 100%" :controls="false" placeholder="0.00"></el-input-number>
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="12">
+                                    <el-form-item label="单价 ($)">
+                                        <el-input-number v-model="form.price" :min="0" :precision="2" style="width: 100%" :controls="false" placeholder="0.00"></el-input-number>
+                                    </el-form-item>
+                                </el-col>
+                            </el-row>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                                <div style="font-size: 13px; color: #6b7280;" v-if="calculatedShares > 0">
+                                    预计股数: <span style="color: var(--primary-color); font-weight: bold;">{{ calculatedShares }}</span>
+                                </div>
+                                <div v-else></div>
+                                <el-button type="primary" @click="addRecord" round style="padding: 10px 30px;">提交</el-button>
+                            </div>
+                        </el-form>
+                    </el-card>
+
+                    <!-- 持仓明细卡片 -->
+                    <el-card class="modern-card">
+                        <template #header>
+                            <div class="card-header-styled">
+                                <span>
+                                    <span class="drag-handle" title="拖动排序">⋮⋮</span>
+                                    📋 持仓明细
+                                </span>
+                                <el-button type="danger" link size="small" @click="clearAll">清空</el-button>
+                            </div>
+                        </template>
+                        <el-table :data="records" style="width: 100%" height="380">
+                            <el-table-column prop="name" label="名称" width="100">
+                                <template #default="scope">
+                                    <span style="font-weight: 600;">{{ scope.row.name }}</span>
+                                </template>
+                            </el-table-column>
+                            <el-table-column prop="date" label="日期" width="110" sortable></el-table-column>
+                            
+                            <el-table-column prop="total" label="总投入($)" sortable>
+                                <template #default="scope">
+                                    <span v-if="isPrivacyMode">****</span>
+                                    <span v-else class="number-font" style="color:#059669">${{ scope.row.total }}</span>
+                                </template>
+                            </el-table-column>
+                            
+                            <el-table-column prop="price" label="均价($)">
+                                <template #default="scope">
+                                    <span v-if="isPrivacyMode">****</span>
+                                    <span v-else class="number-font">${{ scope.row.price }}</span>
+                                </template>
+                            </el-table-column>
+                            
+                            <el-table-column prop="shares" label="股数">
+                                <template #default="scope">
+                                    <span v-if="isPrivacyMode">****</span>
+                                    <span v-else class="number-font">{{ scope.row.shares }}</span>
+                                </template>
+                            </el-table-column>
+                            
+                            <el-table-column align="right" width="60">
+                                <template #default="scope">
+                                    <el-button size="small" type="danger" icon="Delete" circle text @click="deleteRecord(scope.$index)"></el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </el-card>
+                    
+                    <!-- 持仓盈亏卡片 -->
+                    <el-card class="modern-card position-table">
+                        <template #header>
+                            <div class="card-header-styled" style="color: #ffffff;">
+                                <span>
+                                    <span class="drag-handle" title="拖动排序">⋮⋮</span>
+                                    💰 持仓盈亏
+                                </span>
+                                <el-button type="primary" link size="small" @click="refreshPrices" :loading="priceLoading" style="color: #10b981;">
+                                    <el-icon><Refresh /></el-icon> 刷新价格
+                                </el-button>
+                            </div>
+                        </template>
+                        <el-table :data="positionSummary" style="width: 100%" :default-sort="{prop: 'totalProfit', order: 'descending'}">
+                            <el-table-column label="名称/代码" width="180">
+                                <template #default="scope">
+                                    <div>
+                                        <div class="stock-name">{{ scope.row.displayName }}</div>
+                                        <div class="stock-code">{{ scope.row.symbol }}</div>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            
+                            <el-table-column label="市值/数量" align="right">
+                                <template #default="scope">
+                                    <div class="value-info">
+                                        <div class="market-value">
+                                            <span v-if="isPrivacyMode">****</span>
+                                            <span v-else class="number-font">{{ scope.row.marketValue }}</span>
+                                        </div>
+                                        <div class="shares">
+                                            <span v-if="isPrivacyMode">****</span>
+                                            <span v-else class="number-font">{{ scope.row.totalShares }}</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            
+                            <el-table-column label="现价/成本" align="right">
+                                <template #default="scope">
+                                    <div class="price-info">
+                                        <div class="current-price">
+                                            <span v-if="scope.row.priceLoading" style="font-size: 12px; color: #6b7280;">加载中...</span>
+                                            <span v-else-if="isPrivacyMode">****</span>
+                                            <span v-else class="number-font">{{ scope.row.currentPrice || '--' }}</span>
+                                        </div>
+                                        <div class="cost-price">
+                                            <span v-if="isPrivacyMode">****</span>
+                                            <span v-else class="number-font">{{ scope.row.avgCost }}</span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                            
+                            <el-table-column label="持仓盈亏" align="right" sortable prop="totalProfitNum">
+                                <template #default="scope">
+                                    <div class="profit-info">
+                                        <div class="profit-amount" :class="getProfitClass(scope.row.totalProfitNum)">
+                                            <span v-if="isPrivacyMode">****</span>
+                                            <span v-else class="number-font">
+                                                {{ scope.row.totalProfitNum >= 0 ? '+' : '' }}{{ scope.row.totalProfit }}
+                                            </span>
+                                        </div>
+                                        <div class="profit-rate" :class="getProfitClass(scope.row.totalProfitNum)">
+                                            <span v-if="isPrivacyMode">****</span>
+                                            <span v-else class="number-font">
+                                                {{ scope.row.profitRateNum >= 0 ? '+' : '' }}{{ scope.row.profitRate }}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: #262626; border-radius: 8px; display: flex; justify-content: space-around;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 12px; color: #9ca3af; margin-bottom: 5px;">总持仓成本</div>
+                                <div class="number-font" style="font-size: 18px; color: #ffffff;">
+                                    <span v-if="isPrivacyMode">****</span>
+                                    <span v-else>${{ totalCost }}</span>
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 12px; color: #9ca3af; margin-bottom: 5px;">总市值</div>
+                                <div class="number-font" style="font-size: 18px; color: #ffffff;">
+                                    <span v-if="isPrivacyMode">****</span>
+                                    <span v-else>${{ totalMarketValue }}</span>
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 12px; color: #9ca3af; margin-bottom: 5px;">总盈亏</div>
+                                <div class="number-font" style="font-size: 18px;" :class="getProfitClass(totalProfitNum)">
+                                    <span v-if="isPrivacyMode">****</span>
+                                    <span v-else>{{ totalProfitNum >= 0 ? '+' : '' }}${{ totalProfit }}</span>
+                                </div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-size: 12px; color: #9ca3af; margin-bottom: 5px;">总收益率</div>
+                                <div class="number-font" style="font-size: 18px;" :class="getProfitClass(totalProfitNum)">
+                                    <span v-if="isPrivacyMode">****</span>
+                                    <span v-else>{{ totalProfitRate >= 0 ? '+' : '' }}{{ totalProfitRate }}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 10px; font-size: 12px; color: #9ca3af; text-align: center;">
+                            最后更新: {{ lastUpdateTime || '--' }}
+                        </div>
+                    </el-card>
+                </el-col>
+
+                <el-col :xs="24" :md="10" class="draggable-card" data-card="right">
+                    <!-- 总资产卡片 -->
+                    <el-card class="modern-card">
+                        <template #header>
+                            <div class="card-header-styled">
+                                <span>
+                                    <span class="drag-handle" title="拖动排序">⋮⋮</span>
+                                    💎 总资产
+                                </span>
+                            </div>
+                        </template>
+                        <div class="asset-board">
+                            <div class="asset-label">Total Assets (USD)</div>
+                            <div class="asset-main-value number-font">
+                                <span v-if="isPrivacyMode">****</span>
+                                <span v-else>${{ totalAssetUSD }}</span>
+                            </div>
+                            <div class="asset-sub-value number-font">
+                                <span v-if="isPrivacyMode">****</span>
+                                <span v-else>≈ ¥{{ totalAssetCNY }} CNY</span>
+                            </div>
+                        </div>
+                    </el-card>
+
+                    <!-- 资产分布卡片 -->
+                    <el-card class="modern-card">
+                        <template #header>
+                            <div class="card-header-styled">
+                                <span>
+                                    <span class="drag-handle" title="拖动排序">⋮⋮</span>
+                                    📊 资产分布
+                                </span>
+                            </div>
+                        </template>
+                        <div ref="chartDom" style="height: 350px; width: 100%;"></div>
+                    </el-card>
+                </el-col>
+            </el-row>
+        </div>
+
+        <!-- 配置对话框 -->
+        <el-dialog v-model="showConfig" title="⚙️ 设置" width="480px" style="border-radius: 12px;">
+            <el-form label-position="top">
+                <el-form-item label="汇率 (实时获取)">
+                    <el-input-number v-model="config.exchangeRate" :precision="4" :step="0.0001" style="width: 70%"></el-input-number>
+                    <el-button style="width: 25%; margin-left: 5%" icon="Refresh" @click="fetchExchangeRate" :loading="rateLoading"></el-button>
+                </el-form-item>
+
+                <el-divider border-style="dashed"></el-divider>
+                
+                <el-form-item label="AI 识别服务商">
+                    <el-radio-group v-model="config.provider" size="large">
+                        <el-radio-button label="gemini">Google Gemini</el-radio-button>
+                        <el-radio-button label="openai">OpenAI / Compatible</el-radio-button>
+                    </el-radio-group>
+                </el-form-item>
+
+                <div v-if="config.provider === 'gemini'">
+                    <el-form-item label="Base URL">
+                        <el-input v-model="config.geminiBaseUrl" placeholder="https://generativelanguage.googleapis.com"></el-input>
+                    </el-form-item>
+                    <el-form-item label="API Key">
+                        <el-input v-model="config.apiKey" type="password" show-password></el-input>
+                    </el-form-item>
+                    
+                    <el-button type="primary" plain style="width: 100%; margin-bottom: 10px;" @click="fetchModels" :loading="testing">
+                        📡 获取可用模型列表
+                    </el-button>
+                    
+                    <el-form-item v-if="availableModels.length > 0">
+                        <el-select v-model="config.model" placeholder="选择模型" style="width: 100%">
+                            <el-option v-for="m in availableModels" :key="m" :label="m" :value="m"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item v-else>
+                         <el-input v-model="config.model" placeholder="模型名称 (如 gemini-1.5-flash)"></el-input>
+                    </el-form-item>
+                </div>
+
+                <div v-if="config.provider === 'openai'">
+                    <el-form-item label="Base URL">
+                        <el-input v-model="config.baseUrl"></el-input>
+                    </el-form-item>
+                    <el-form-item label="API Key">
+                        <el-input v-model="config.apiKey" type="password" show-password></el-input>
+                    </el-form-item>
+                    <el-form-item label="模型名称">
+                        <el-input v-model="config.model" placeholder="gpt-4o"></el-input>
+                    </el-form-item>
+                </div>
+            </el-form>
+            <template #footer>
+                <el-button @click="showConfig = false">取消</el-button>
+                <el-button type="primary" @click="saveConfig">保存</el-button>
+            </template>
+        </el-dialog>
+    </div>
+
+    <!-- 第三方库 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    <script src="https://unpkg.com/echarts/dist/echarts.min.js"></script>
+
+    <!-- 工具模块 -->
+    <script type="module" src="./src/utils/storage.js"></script>
+    <script type="module" src="./src/utils/formatter.js"></script>
+    <script type="module" src="./src/utils/api.js"></script>
+
+    <!-- Composables -->
+    <script type="module" src="./src/composables/useConfig.js"></script>
+    <script type="module" src="./src/composables/useRecords.js"></script>
+    <script type="module" src="./src/composables/usePosition.js"></script>
+    <script type="module" src="./src/composables/useChart.js"></script>
+
+    <!-- 主应用 -->
+    <script type="module" src="./src/app.js"></script>
+</body>
+</html>
