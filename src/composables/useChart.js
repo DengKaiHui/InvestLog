@@ -24,6 +24,7 @@ export function useChart(Vue, records, isPrivacyMode) {
     // 更新图表数据
     function updateChart() {
         if (!myChart) return;
+        if (!records || !records.value) return;
         
         // 聚合数据
         const agg = {};
@@ -37,7 +38,7 @@ export function useChart(Vue, records, isPrivacyMode) {
         }));
         
         // 配置图表选项
-        myChart.setOption({
+        const option = {
             color: ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'],
             tooltip: {
                 trigger: 'item',
@@ -45,7 +46,7 @@ export function useChart(Vue, records, isPrivacyMode) {
                     if (isPrivacyMode.value) {
                         return `${params.name}: **** (${params.percent}%)`;
                     }
-                    return `${params.name}: $${params.value} (${params.percent}%)`;
+                    return `${params.name}: $${params.value.toFixed(2)} (${params.percent}%)`;
                 }
             },
             legend: {
@@ -64,9 +65,18 @@ export function useChart(Vue, records, isPrivacyMode) {
                 label: {
                     show: false
                 },
-                data: data.length ? data : [{ name: 'Empty', value: 0 }]
+                emphasis: {
+                    label: {
+                        show: true,
+                        fontSize: 16,
+                        fontWeight: 'bold'
+                    }
+                },
+                data: data.length > 0 ? data : [{ name: '暂无数据', value: 1 }]
             }]
-        });
+        };
+        
+        myChart.setOption(option, true);
     }
     
     return {

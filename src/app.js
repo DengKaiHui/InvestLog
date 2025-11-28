@@ -18,39 +18,25 @@ const App = {
         // 配置管理
         const configModule = useConfig(Vue);
         
-        // 记录管理（先创建，以便传递给图表）
+        // 临时存储回调函数
+        let updateChartCallback = null;
+        let refreshPricesCallback = null;
+        
+        // 记录管理
         const recordsModule = useRecords(
             Vue,
             configModule.config,
-            null, // updateChart会在后面传入
-            null // refreshPrices会在后面传入
+            () => updateChartCallback && updateChartCallback(),
+            () => refreshPricesCallback && refreshPricesCallback()
         );
         
-        // 图表管理（传入records引用）
+        // 图表管理
         const chartModule = useChart(Vue, recordsModule.records, isPrivacyMode);
+        updateChartCallback = chartModule.updateChart;
         
         // 持仓盈亏管理
         const positionModule = usePosition(Vue, recordsModule.records);
-        
-        // 更新记录模块的回调函数引用
-        const originalAddRecord = recordsModule.addRecord;
-        recordsModule.addRecord = function() {
-            originalAddRecord();
-            chartModule.updateChart();
-            setTimeout(() => positionModule.refreshPrices(), 500);
-        };
-        
-        const originalDeleteRecord = recordsModule.deleteRecord;
-        recordsModule.deleteRecord = function(index) {
-            originalDeleteRecord(index);
-            chartModule.updateChart();
-        };
-        
-        const originalClearAll = recordsModule.clearAll;
-        recordsModule.clearAll = function() {
-            originalClearAll();
-            chartModule.updateChart();
-        };
+        refreshPricesCallback = positionModule.refreshPrices;
         
         // 计算总资产
         const totalAssetUSD = computed(() => {
@@ -74,23 +60,10 @@ const App = {
             const leftColumn = document.querySelector('[data-card="left"]');
             const rightColumn = document.querySelector('[data-card="right"]');
             
-            if (!leftColumn || !rightColumn) return;
-            
-            // 为左侧卡片容器创建拖动
-            const leftCards = leftColumn.querySelectorAll('.modern-card');
-            leftCards.forEach((card, index) => {
-                if (!card.dataset.cardId) {
-                    card.dataset.cardId = `left-${index}`;
-                }
-            });
-            
-            // 为右侧卡片容器创建拖动
-            const rightCards = rightColumn.querySelectorAll('.modern-card');
-            rightCards.forEach((card, index) => {
-                if (!card.dataset.cardId) {
-                    card.dataset.cardId = `right-${index}`;
-                }
-            });
+            if (!leftColumn || !rightColumn) {
+                console.error('未找到拖动容器');
+                return;
+            }
             
             // 恢复保存的顺序
             const savedLeftOrder = storage.get(STORAGE_KEYS.CARD_ORDER_LEFT);
@@ -119,6 +92,7 @@ const App = {
                 animation: 150,
                 handle: '.drag-handle',
                 ghostClass: 'sortable-ghost',
+                draggable: '.modern-card',
                 onEnd: function() {
                     const cards = leftColumn.querySelectorAll('.modern-card');
                     const order = Array.from(cards).map(card => card.dataset.cardId);
@@ -131,6 +105,7 @@ const App = {
                 animation: 150,
                 handle: '.drag-handle',
                 ghostClass: 'sortable-ghost',
+                draggable: '.modern-card',
                 onEnd: function() {
                     const cards = rightColumn.querySelectorAll('.modern-card');
                     const order = Array.from(cards).map(card => card.dataset.cardId);
@@ -152,6 +127,12 @@ const App = {
             // 初始化图表和拖动
             nextTick(() => {
                 chartModule.initChart();
+                
+                // 数据加载后更新图表
+                setTimeout(() => {
+                    chartModule.updateChart();
+                }, 100);
+                
                 initDraggable();
                 
                 // 自动刷新价格

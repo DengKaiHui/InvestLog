@@ -32,7 +32,9 @@ export function useRecords(Vue, config, updateChart, refreshPrices) {
     // 保存记录
     function saveRecords() {
         storage.set(STORAGE_KEYS.INVEST_DATA, records.value);
-        updateChart();
+        if (updateChart && typeof updateChart === 'function') {
+            updateChart();
+        }
     }
     
     // 添加记录
@@ -57,7 +59,9 @@ export function useRecords(Vue, config, updateChart, refreshPrices) {
         ElementPlus.ElMessage.success('已记录');
         
         // 自动刷新价格
-        setTimeout(() => refreshPrices(), 500);
+        if (refreshPrices && typeof refreshPrices === 'function') {
+            setTimeout(() => refreshPrices(), 500);
+        }
     }
     
     // 删除记录
@@ -123,7 +127,9 @@ export function useRecords(Vue, config, updateChart, refreshPrices) {
             ElementPlus.ElMessage.success(`录入 ${count} 条`);
             
             // 自动刷新价格
-            setTimeout(() => refreshPrices(), 500);
+            if (refreshPrices && typeof refreshPrices === 'function') {
+                setTimeout(() => refreshPrices(), 500);
+            }
         } catch (error) {
             ElementPlus.ElMessage.error(error.message);
         } finally {
