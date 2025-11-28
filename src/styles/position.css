@@ -1,17 +1,17 @@
-/* 持仓盈亏表格样式 - 深色主题 */
+/* 持仓盈亏表格样式 - 白色主题 */
 .position-table {
-    background: #1a1a1a;
+    background: #ffffff;
     border-radius: 12px;
     overflow: hidden;
 }
 
 .position-table .el-table {
-    background: #1a1a1a !important;
+    background: #ffffff !important;
 }
 
 .position-table .el-table th.el-table__cell {
-    background: #1a1a1a !important;
-    color: #9ca3af !important;
+    background: #f9fafb !important;
+    color: #6b7280 !important;
     border: none !important;
     font-size: 14px;
     font-weight: 500;
@@ -19,36 +19,36 @@
 }
 
 .position-table .el-table td.el-table__cell {
-    background: #1a1a1a !important;
-    color: #ffffff !important;
+    background: #ffffff !important;
+    color: #1f2937 !important;
     border: none !important;
     padding: 20px 12px;
     font-size: 15px;
 }
 
 .position-table .el-table tr {
-    background: #1a1a1a !important;
+    background: #ffffff !important;
 }
 
 .position-table .el-table tbody tr:hover > td {
-    background: #262626 !important;
+    background: #f9fafb !important;
 }
 
 .position-table .el-table__body tr.el-table__row--striped td {
-    background: #1a1a1a !important;
+    background: #ffffff !important;
 }
 
 /* 双行布局样式 */
 .position-table .stock-name {
     font-size: 16px;
     font-weight: 600;
-    color: #ffffff;
+    color: #1f2937;
     margin-bottom: 4px;
 }
 
 .position-table .stock-code {
     font-size: 13px;
-    color: #6b7280;
+    color: #9ca3af;
 }
 
 .position-table .price-info {

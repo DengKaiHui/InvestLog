@@ -54,5 +54,7 @@ export const STORAGE_KEYS = {
     AI_CONFIG: 'aiConfigV9',
     STOCK_PRICES: 'stockPrices',
     LAST_UPDATE_TIME: 'lastUpdateTime',
-    CARD_ORDER: 'cardOrder'
+    CARD_ORDER: 'cardOrder',
+    CARD_ORDER_LEFT: 'cardOrderLeft',
+    CARD_ORDER_RIGHT: 'cardOrderRight'
 };

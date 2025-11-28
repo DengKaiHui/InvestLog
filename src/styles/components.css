@@ -21,14 +21,6 @@
 }
 
 /* 拖拽相关样式 */
-.draggable-card {
-    cursor: move;
-}
-
-.draggable-card.sortable-ghost {
-    opacity: 0.4;
-}
-
 .drag-handle {
     cursor: move;
     padding: 4px;
@@ -39,6 +31,10 @@
 
 .drag-handle:hover {
     color: #6b7280;
+}
+
+.sortable-ghost {
+    opacity: 0.4;
 }
 
 /* 资产大看板 */

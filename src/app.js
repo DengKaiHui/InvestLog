@@ -18,25 +18,38 @@ const App = {
         // 配置管理
         const configModule = useConfig(Vue);
         
-        // 图表管理
-        const chartModule = useChart(Vue, null, isPrivacyMode); // records会在后面传入
-        
-        // 记录管理（需要传入config和updateChart）
+        // 记录管理（先创建，以便传递给图表）
         const recordsModule = useRecords(
             Vue,
             configModule.config,
-            chartModule.updateChart,
+            null, // updateChart会在后面传入
             null // refreshPrices会在后面传入
         );
+        
+        // 图表管理（传入records引用）
+        const chartModule = useChart(Vue, recordsModule.records, isPrivacyMode);
         
         // 持仓盈亏管理
         const positionModule = usePosition(Vue, recordsModule.records);
         
-        // 更新记录模块的refreshPrices引用
+        // 更新记录模块的回调函数引用
         const originalAddRecord = recordsModule.addRecord;
         recordsModule.addRecord = function() {
             originalAddRecord();
+            chartModule.updateChart();
             setTimeout(() => positionModule.refreshPrices(), 500);
+        };
+        
+        const originalDeleteRecord = recordsModule.deleteRecord;
+        recordsModule.deleteRecord = function(index) {
+            originalDeleteRecord(index);
+            chartModule.updateChart();
+        };
+        
+        const originalClearAll = recordsModule.clearAll;
+        recordsModule.clearAll = function() {
+            originalClearAll();
+            chartModule.updateChart();
         };
         
         // 计算总资产
@@ -58,30 +71,70 @@ const App = {
         
         // 卡片拖动排序
         function initDraggable() {
-            const container = document.getElementById('draggable-container');
-            if (!container) return;
+            const leftColumn = document.querySelector('[data-card="left"]');
+            const rightColumn = document.querySelector('[data-card="right"]');
             
-            const savedOrder = storage.get(STORAGE_KEYS.CARD_ORDER);
-            if (savedOrder) {
-                // 恢复保存的顺序
-                savedOrder.forEach((cardId, index) => {
-                    const card = container.querySelector(`[data-card="${cardId}"]`);
+            if (!leftColumn || !rightColumn) return;
+            
+            // 为左侧卡片容器创建拖动
+            const leftCards = leftColumn.querySelectorAll('.modern-card');
+            leftCards.forEach((card, index) => {
+                if (!card.dataset.cardId) {
+                    card.dataset.cardId = `left-${index}`;
+                }
+            });
+            
+            // 为右侧卡片容器创建拖动
+            const rightCards = rightColumn.querySelectorAll('.modern-card');
+            rightCards.forEach((card, index) => {
+                if (!card.dataset.cardId) {
+                    card.dataset.cardId = `right-${index}`;
+                }
+            });
+            
+            // 恢复保存的顺序
+            const savedLeftOrder = storage.get(STORAGE_KEYS.CARD_ORDER_LEFT);
+            const savedRightOrder = storage.get(STORAGE_KEYS.CARD_ORDER_RIGHT);
+            
+            if (savedLeftOrder && savedLeftOrder.length > 0) {
+                savedLeftOrder.forEach(cardId => {
+                    const card = leftColumn.querySelector(`[data-card-id="${cardId}"]`);
                     if (card) {
-                        container.appendChild(card);
+                        leftColumn.appendChild(card);
                     }
                 });
             }
             
-            // 初始化Sortable
-            Sortable.create(container, {
+            if (savedRightOrder && savedRightOrder.length > 0) {
+                savedRightOrder.forEach(cardId => {
+                    const card = rightColumn.querySelector(`[data-card-id="${cardId}"]`);
+                    if (card) {
+                        rightColumn.appendChild(card);
+                    }
+                });
+            }
+            
+            // 初始化左侧拖动
+            Sortable.create(leftColumn, {
                 animation: 150,
                 handle: '.drag-handle',
                 ghostClass: 'sortable-ghost',
                 onEnd: function() {
-                    // 保存新的顺序
-                    const cards = container.querySelectorAll('.draggable-card');
-                    const order = Array.from(cards).map(card => card.dataset.card);
-                    storage.set(STORAGE_KEYS.CARD_ORDER, order);
+                    const cards = leftColumn.querySelectorAll('.modern-card');
+                    const order = Array.from(cards).map(card => card.dataset.cardId);
+                    storage.set(STORAGE_KEYS.CARD_ORDER_LEFT, order);
+                }
+            });
+            
+            // 初始化右侧拖动
+            Sortable.create(rightColumn, {
+                animation: 150,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                onEnd: function() {
+                    const cards = rightColumn.querySelectorAll('.modern-card');
+                    const order = Array.from(cards).map(card => card.dataset.cardId);
+                    storage.set(STORAGE_KEYS.CARD_ORDER_RIGHT, order);
                 }
             });
         }
