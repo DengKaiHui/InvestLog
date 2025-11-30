@@ -64,6 +64,21 @@ const App = {
             showAddRecordDialog.value = false;
         }
         
+        // 处理数据操作命令
+        function handleDataCommand(command) {
+            switch (command) {
+                case 'export':
+                    recordsModule.exportCSV();
+                    break;
+                case 'import':
+                    recordsModule.showImportDialog.value = true;
+                    break;
+                case 'clear':
+                    recordsModule.clearAll();
+                    break;
+            }
+        }
+        
         // 卡片拖动排序
         function initDraggable() {
             const leftColumn = document.querySelector('[data-card="left"]');
@@ -170,6 +185,7 @@ const App = {
             togglePrivacy,
             showAddRecordDialog,
             addRecordAndClose,
+            handleDataCommand,
             totalAssetUSD,
             totalAssetCNY
         };

@@ -2,6 +2,9 @@
  * API 调用工具
  */
 
+// 后端API基础地址
+const API_BASE_URL = 'http://localhost:3001/api';
+
 // 获取汇率
 export async function fetchExchangeRate() {
     try {
@@ -17,8 +20,221 @@ export async function fetchExchangeRate() {
     }
 }
 
-// 后端API基础地址
-const API_BASE_URL = 'http://localhost:3001/api';
+// ================== 交易记录 API ==================
+
+// 获取所有交易记录
+export async function fetchAllTransactions() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/transactions`);
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.data;
+        }
+        throw new Error(data.message || '获取交易记录失败');
+    } catch (error) {
+        console.error('获取交易记录失败:', error);
+        throw error;
+    }
+}
+
+// 添加交易记录
+export async function createTransaction(record) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/transactions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(record)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.id;
+        }
+        throw new Error(data.message || '添加交易记录失败');
+    } catch (error) {
+        console.error('添加交易记录失败:', error);
+        throw error;
+    }
+}
+
+// 批量添加交易记录
+export async function createTransactionsBatch(records) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/transactions/batch`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ records })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.count;
+        }
+        throw new Error(data.message || '批量添加失败');
+    } catch (error) {
+        console.error('批量添加交易记录失败:', error);
+        throw error;
+    }
+}
+
+// 删除交易记录
+export async function deleteTransaction(id) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return true;
+        }
+        throw new Error(data.message || '删除交易记录失败');
+    } catch (error) {
+        console.error('删除交易记录失败:', error);
+        throw error;
+    }
+}
+
+// 清空所有交易记录
+export async function deleteAllTransactions() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/transactions`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.count;
+        }
+        throw new Error(data.message || '清空交易记录失败');
+    } catch (error) {
+        console.error('清空交易记录失败:', error);
+        throw error;
+    }
+}
+
+// ================== CSV 导入导出 API ==================
+
+// 导出 CSV
+export async function exportToCSV() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/export/csv`);
+        
+        if (!response.ok) {
+            throw new Error('导出失败');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `investlog_${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        return true;
+    } catch (error) {
+        console.error('导出 CSV 失败:', error);
+        throw error;
+    }
+}
+
+// 导入 CSV
+export async function importFromCSV(file, append = true) {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('append', append);
+        
+        const response = await fetch(`${API_BASE_URL}/import/csv`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return data;
+        }
+        throw new Error(data.message || '导入失败');
+    } catch (error) {
+        console.error('导入 CSV 失败:', error);
+        throw error;
+    }
+}
+
+// 验证 CSV
+export async function validateCSV(file) {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/import/csv/validate`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('验证 CSV 失败:', error);
+        throw error;
+    }
+}
+
+// ================== 配置 API ==================
+
+// 获取配置
+export async function getConfig(key) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/config/${key}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.data;
+        }
+        return null;
+    } catch (error) {
+        console.error('获取配置失败:', error);
+        return null;
+    }
+}
+
+// 保存配置
+export async function saveConfig(key, value) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/config`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ key, value })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return true;
+        }
+        throw new Error(data.message || '保存配置失败');
+    } catch (error) {
+        console.error('保存配置失败:', error);
+        throw error;
+    }
+}
+
+// ================== 股票价格 API ==================
 
 // 获取单个股票价格
 export async function fetchStockPrice(symbol, force = false) {

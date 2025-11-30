@@ -1,8 +1,12 @@
 /**
  * 配置管理 Composable
  */
-import { storage, STORAGE_KEYS } from '../utils/storage.js';
-import { fetchExchangeRate as apiFetchExchangeRate, fetchGeminiModels } from '../utils/api.js';
+import { 
+    fetchExchangeRate as apiFetchExchangeRate, 
+    fetchGeminiModels,
+    getConfig as apiGetConfig,
+    saveConfig as apiSaveConfig
+} from '../utils/api.js';
 
 export function useConfig(Vue) {
     const { ref } = Vue;
@@ -22,18 +26,27 @@ export function useConfig(Vue) {
     });
     
     // 加载配置
-    function loadConfig() {
-        const savedConfig = storage.get(STORAGE_KEYS.AI_CONFIG);
-        if (savedConfig) {
-            config.value = { ...config.value, ...savedConfig };
+    async function loadConfig() {
+        try {
+            const savedConfig = await apiGetConfig('ai_config');
+            if (savedConfig) {
+                config.value = { ...config.value, ...savedConfig };
+            }
+        } catch (error) {
+            console.error('加载配置失败:', error);
         }
     }
     
     // 保存配置
-    function saveConfig() {
-        storage.set(STORAGE_KEYS.AI_CONFIG, config.value);
-        showConfig.value = false;
-        ElementPlus.ElMessage.success('配置已保存');
+    async function saveConfig() {
+        try {
+            await apiSaveConfig('ai_config', config.value);
+            showConfig.value = false;
+            ElementPlus.ElMessage.success('配置已保存');
+        } catch (error) {
+            console.error('保存配置失败:', error);
+            ElementPlus.ElMessage.error('保存配置失败');
+        }
     }
     
     // 获取汇率
@@ -43,7 +56,7 @@ export function useConfig(Vue) {
             const rate = await apiFetchExchangeRate();
             config.value.exchangeRate = rate;
             ElementPlus.ElMessage.success('汇率已更新');
-            storage.set(STORAGE_KEYS.AI_CONFIG, config.value);
+            await apiSaveConfig('ai_config', config.value);
         } catch (error) {
             ElementPlus.ElMessage.warning('汇率更新失败');
         } finally {

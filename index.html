@@ -57,7 +57,18 @@
                                     <el-button type="primary" size="small" @click="showAddRecordDialog = true" round>
                                         <el-icon style="margin-right:4px"><Plus /></el-icon> 记一笔
                                     </el-button>
-                                    <el-button type="danger" link size="small" @click="clearAll">清空</el-button>
+                                    <el-dropdown @command="handleDataCommand">
+                                        <el-button size="small" round>
+                                            数据 <el-icon class="el-icon--right"><arrow-down /></el-icon>
+                                        </el-button>
+                                        <template #dropdown>
+                                            <el-dropdown-menu>
+                                                <el-dropdown-item command="export">导出 CSV</el-dropdown-item>
+                                                <el-dropdown-item command="import">导入 CSV</el-dropdown-item>
+                                                <el-dropdown-item command="clear" divided>清空数据</el-dropdown-item>
+                                            </el-dropdown-menu>
+                                        </template>
+                                    </el-dropdown>
                                 </div>
                             </div>
                         </template>
@@ -359,6 +370,41 @@
             <template #footer>
                 <el-button @click="showConfig = false">取消</el-button>
                 <el-button type="primary" @click="saveConfig">保存</el-button>
+            </template>
+        </el-dialog>
+
+        <!-- CSV 导入对话框 -->
+        <el-dialog v-model="showImportDialog" title="📥 导入 CSV" width="500px">
+            <el-form label-position="top">
+                <el-form-item label="导入模式">
+                    <el-radio-group v-model="importMode">
+                        <el-radio label="append">追加模式（保留原有数据）</el-radio>
+                        <el-radio label="replace">覆盖模式（清空原有数据）</el-radio>
+                    </el-radio-group>
+                </el-form-item>
+                
+                <el-form-item label="选择 CSV 文件">
+                    <el-upload
+                        action="#"
+                        :auto-upload="false"
+                        :show-file-list="true"
+                        :on-change="handleImportCSV"
+                        accept=".csv"
+                        :limit="1"
+                    >
+                        <el-button type="primary">
+                            <el-icon style="margin-right:4px"><Upload /></el-icon> 选择文件
+                        </el-button>
+                        <template #tip>
+                            <div style="margin-top: 8px; font-size: 12px; color: #6b7280;">
+                                支持的列: name, symbol, date, total, price, shares
+                            </div>
+                        </template>
+                    </el-upload>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <el-button @click="showImportDialog = false">关闭</el-button>
             </template>
         </el-dialog>
     </div>
