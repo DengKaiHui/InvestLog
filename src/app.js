@@ -141,13 +141,10 @@ const App = {
         
         // 生命周期
         onMounted(() => {
-            // 加载数据
+            // 加载数据（汇率会在 loadConfig 中自动处理）
             configModule.loadConfig();
             recordsModule.loadRecords();
             positionModule.loadPrices();
-            
-            // 获取汇率
-            configModule.fetchExchangeRate();
             
             // 初始化图表和拖动
             nextTick(() => {

@@ -32,6 +32,16 @@ export function useConfig(Vue) {
             if (savedConfig) {
                 config.value = { ...config.value, ...savedConfig };
             }
+            
+            // 从 localStorage 加载汇率
+            const cachedRate = localStorage.getItem('exchange_rate');
+            if (cachedRate) {
+                config.value.exchangeRate = parseFloat(cachedRate);
+                console.log(`使用缓存汇率: 1 USD = ${cachedRate} CNY`);
+            } else {
+                // 如果没有缓存，自动获取汇率
+                await fetchExchangeRate(true);
+            }
         } catch (error) {
             console.error('加载配置失败:', error);
         }
@@ -50,15 +60,23 @@ export function useConfig(Vue) {
     }
     
     // 获取汇率
-    async function fetchExchangeRate() {
+    async function fetchExchangeRate(silent = false) {
         rateLoading.value = true;
         try {
             const rate = await apiFetchExchangeRate();
             config.value.exchangeRate = rate;
-            ElementPlus.ElMessage.success('汇率已更新');
+            
+            // 保存到 localStorage
+            localStorage.setItem('exchange_rate', rate.toString());
+            
+            if (!silent) {
+                ElementPlus.ElMessage.success('汇率已更新');
+            }
             await apiSaveConfig('ai_config', config.value);
         } catch (error) {
-            ElementPlus.ElMessage.warning('汇率更新失败');
+            if (!silent) {
+                ElementPlus.ElMessage.warning('汇率更新失败');
+            }
         } finally {
             rateLoading.value = false;
         }

@@ -568,6 +568,50 @@ app.post('/api/prices', async (req, res) => {
     }
 });
 
+// 手动刷新价格（强制从API获取）
+app.post('/api/refresh', async (req, res) => {
+    const { symbols } = req.body;
+    
+    if (!Array.isArray(symbols) || symbols.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: '请提供股票代码数组'
+        });
+    }
+    
+    try {
+        const results = {};
+        
+        for (const symbol of symbols) {
+            const price = await fetchStockPrice(symbol, 0);
+            if (price !== null) {
+                results[symbol] = {
+                    price,
+                    lastUpdate: new Date().toISOString()
+                };
+            } else {
+                results[symbol] = {
+                    price: null,
+                    error: '获取失败'
+                };
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        res.json({
+            success: true,
+            results
+        });
+    } catch (error) {
+        console.error('刷新价格失败:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+
 // ================== 启动服务器 ==================
 
 app.listen(PORT, () => {
