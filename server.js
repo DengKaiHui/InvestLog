@@ -20,10 +20,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Alpha Vantage API Key
-const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY || 'demo';
 // Finnhub API Key
-const FINNHUB_KEY = process.env.FINNHUB_KEY || 'demo';
+const FINNHUB_KEY = process.env.FINNHUB_KEY || '';
 
 // 配置 multer 用于文件上传
 const upload = multer({
@@ -400,57 +398,52 @@ app.post('/api/config', (req, res) => {
 // ================== 股票价格 API ==================
 
 /**
- * 方法1: Yahoo Finance 直接 API (推荐)
+ * 判断缓存是否在今天早上8点之前
+ * @returns {boolean} true表示需要刷新
  */
-async function fetchPriceFromYahooWeb(symbol) {
-    try {
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
-        
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`;
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                'Accept': 'application/json',
-                'Referer': 'https://finance.yahoo.com/',
-            }
-        });
-        
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        
-        if (data.chart?.result?.[0]) {
-            const meta = data.chart.result[0].meta;
-            const price = meta.regularMarketPrice || meta.previousClose;
-            
-            if (price && price > 0) {
-                return { price, source: 'Yahoo Web' };
-            }
-        }
-        
-        return null;
-    } catch (error) {
-        console.error(`  Yahoo Web API 失败: ${error.message}`);
-        return null;
+function shouldRefreshCache(cachedTime) {
+    const now = new Date();
+    const cached = new Date(cachedTime);
+    
+    // 获取今天早上8点的时间戳
+    const today8am = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+    
+    // 如果缓存时间在今天8点之前，需要刷新
+    if (cached < today8am && now >= today8am) {
+        return true;
     }
+    
+    // 如果现在还没到今天8点，但缓存是昨天的，也需要刷新
+    if (now < today8am && cached < new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 8, 0, 0)) {
+        return true;
+    }
+    
+    return false;
 }
 
 /**
- * 智能获取股票价格
+ * 从 Finnhub 获取股票价格
  */
 async function fetchStockPrice(symbol, retries = 1) {
     console.log(`📊 获取 ${symbol} 价格...`);
     
+    // 验证 API Key
+    if (!FINNHUB_KEY || FINNHUB_KEY === '') {
+        console.error('✗ Finnhub API Key 未配置');
+        return null;
+    }
+    
     // 先检查数据库缓存
     const cached = priceCacheDB.get(symbol);
     if (cached) {
-        const cacheAge = Date.now() - new Date(cached.updated_at).getTime();
-        if (cacheAge < 30 * 60 * 1000) { // 30分钟内
-            console.log(`↻ 使用缓存: ${symbol} = $${cached.price}`);
+        // 如果不需要刷新（今天8点后已更新过），使用缓存
+        if (!shouldRefreshCache(cached.updated_at)) {
+            console.log(`↻ 使用缓存: ${symbol} = $${cached.price} (更新于 ${new Date(cached.updated_at).toLocaleString('zh-CN')})`);
             return cached.price;
         }
     }
     
+    // 重试逻辑
     for (let attempt = 0; attempt <= retries; attempt++) {
         if (attempt > 0) {
             const waitTime = attempt * 2;
@@ -458,12 +451,27 @@ async function fetchStockPrice(symbol, retries = 1) {
             await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
         }
         
-        const result = await fetchPriceFromYahooWeb(symbol);
-        if (result) {
-            console.log(`✓ ${symbol} = $${result.price}`);
-            // 更新数据库缓存
-            priceCacheDB.set(symbol, result.price);
-            return result.price;
+        try {
+            const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Finnhub 返回格式: { c: 当前价, h: 最高价, l: 最低价, o: 开盘价, pc: 昨收价, t: 时间戳 }
+            const price = data.c;
+            
+            if (price && price > 0) {
+                console.log(`✓ ${symbol} = $${price} (Finnhub)`);
+                // 更新数据库缓存
+                priceCacheDB.set(symbol, price);
+                return price;
+            }
+        } catch (error) {
+            console.error(`  Finnhub API 失败: ${error.message}`);
         }
     }
     
@@ -480,17 +488,14 @@ app.get('/api/price/:symbol', async (req, res) => {
         // 如果不强制刷新，先查缓存
         if (!force) {
             const cached = priceCacheDB.get(symbol);
-            if (cached) {
-                const cacheAge = Date.now() - new Date(cached.updated_at).getTime();
-                if (cacheAge < 30 * 60 * 1000) {
-                    return res.json({
-                        success: true,
-                        symbol,
-                        price: cached.price,
-                        cached: true,
-                        lastUpdate: cached.updated_at
-                    });
-                }
+            if (cached && !shouldRefreshCache(cached.updated_at)) {
+                return res.json({
+                    success: true,
+                    symbol,
+                    price: cached.price,
+                    cached: true,
+                    lastUpdate: cached.updated_at
+                });
             }
         }
         
