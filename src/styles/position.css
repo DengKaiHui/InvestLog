@@ -100,3 +100,16 @@
 .position-table .profit-rate {
     font-size: 13px;
 }
+
+/* 盈亏颜色样式 */
+.profit-positive {
+    color: #16a34a !important;
+}
+
+.profit-negative {
+    color: #dc2626 !important;
+}
+
+.profit-neutral {
+    color: #6b7280 !important;
+}

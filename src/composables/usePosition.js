@@ -53,10 +53,10 @@ export function usePosition(Vue, records) {
                 const marketValue = totalShares * Number(price);
                 pos.marketValue = formatCurrency(marketValue);
                 const totalProfit = marketValue - totalCost;
-                pos.totalProfit = formatCurrency(Math.abs(totalProfit));
+                pos.totalProfit = (totalProfit < 0 ? '-' : '') + formatCurrency(Math.abs(totalProfit));
                 pos.totalProfitNum = totalProfit;
                 const profitRate = (totalProfit / totalCost) * 100;
-                pos.profitRate = Math.abs(profitRate).toFixed(2);
+                pos.profitRate = (profitRate < 0 ? '-' : '') + Math.abs(profitRate).toFixed(2);
                 pos.profitRateNum = profitRate;
             } else {
                 pos.currentPrice = '--';
@@ -95,7 +95,7 @@ export function usePosition(Vue, records) {
         const sum = positionSummary.value.reduce((acc, pos) => {
             return acc + Number(pos.totalProfitNum || 0);
         }, 0);
-        return formatCurrency(Math.abs(sum));
+        return (sum < 0 ? '-' : '') + formatCurrency(Math.abs(sum));
     });
     
     const totalProfitNum = computed(() => {
@@ -111,7 +111,8 @@ export function usePosition(Vue, records) {
             return acc + Number(cost);
         }, 0);
         if (costSum === 0) return '0.00';
-        return Math.abs((totalProfitNum.value / costSum) * 100).toFixed(2);
+        const rate = (totalProfitNum.value / costSum) * 100;
+        return (rate < 0 ? '-' : '') + Math.abs(rate).toFixed(2);
     });
     
     // 加载价格数据

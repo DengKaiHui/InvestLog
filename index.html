@@ -169,7 +169,7 @@
                                         <div class="profit-amount" :class="getProfitClass(scope.row.totalProfitNum)">
                                             <span v-if="isPrivacyMode">****</span>
                                             <span v-else class="number-font">
-                                                {{ scope.row.totalProfitNum >= 0 ? '+' : '' }}{{ scope.row.totalProfit }}
+                                                {{ scope.row.totalProfitNum >= 0 ? '+$' : '-$' }}{{ scope.row.totalProfit.replace('-', '') }}
                                             </span>
                                         </div>
                                         <div class="profit-rate" :class="getProfitClass(scope.row.totalProfitNum)">
@@ -202,14 +202,14 @@
                                 <div style="font-size: 12px; color: #6b7280; margin-bottom: 5px;">总盈亏</div>
                                 <div class="number-font" style="font-size: 18px;" :class="getProfitClass(totalProfitNum)">
                                     <span v-if="isPrivacyMode">****</span>
-                                    <span v-else>{{ totalProfitNum >= 0 ? '+' : '' }}${{ totalProfit }}</span>
+                                    <span v-else>{{ totalProfitNum >= 0 ? '+$' : '-$' }}{{ totalProfit.replace('-', '') }}</span>
                                 </div>
                             </div>
                             <div style="text-align: center;">
                                 <div style="font-size: 12px; color: #6b7280; margin-bottom: 5px;">总收益率</div>
                                 <div class="number-font" style="font-size: 18px;" :class="getProfitClass(totalProfitNum)">
                                     <span v-if="isPrivacyMode">****</span>
-                                    <span v-else>{{ totalProfitRate >= 0 ? '+' : '' }}{{ totalProfitRate }}%</span>
+                                    <span v-else>{{ totalProfitNum >= 0 ? '+' : '' }}{{ totalProfitRate }}%</span>
                                 </div>
                             </div>
                         </div>
@@ -252,6 +252,9 @@
                                     <span class="drag-handle" title="拖动排序">⋮⋮</span>
                                     📊 资产分布
                                 </span>
+                                <el-button type="primary" link size="small" @click="copyAssetDistribution">
+                                    <el-icon><CopyDocument /></el-icon> 复制
+                                </el-button>
                             </div>
                         </template>
                         <div ref="chartDom" style="height: 350px; width: 100%;"></div>

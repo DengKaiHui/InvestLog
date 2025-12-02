@@ -79,9 +79,41 @@ export function useChart(Vue, records, isPrivacyMode) {
         myChart.setOption(option, true);
     }
     
+    // 复制资产分布
+    function copyAssetDistribution() {
+        if (!records || !records.value || records.value.length === 0) {
+            ElementPlus.ElMessage.warning('暂无数据');
+            return;
+        }
+        
+        // 聚合数据
+        const agg = {};
+        let total = 0;
+        records.value.forEach(item => {
+            agg[item.name] = (agg[item.name] || 0) + item.total;
+            total += item.total;
+        });
+        
+        // 计算百分比并格式化
+        const result = Object.entries(agg)
+            .map(([name, value]) => {
+                const percentage = ((value / total) * 100).toFixed(2);
+                return `${name} ${percentage}%`;
+            })
+            .join(', ');
+        
+        // 复制到剪贴板
+        navigator.clipboard.writeText(result).then(() => {
+            ElementPlus.ElMessage.success('已复制到剪贴板');
+        }).catch(() => {
+            ElementPlus.ElMessage.error('复制失败');
+        });
+    }
+    
     return {
         chartDom,
         initChart,
-        updateChart
+        updateChart,
+        copyAssetDistribution
     };
 }
